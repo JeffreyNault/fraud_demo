@@ -1,0 +1,94 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #f8f5f0;
+  color: #2c2c2c;
+  min-height: 100vh;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.app-header {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  text-align: center;
+  padding-bottom: 0;
+}
+
+.flag-strip {
+  display: flex;
+  height: 6px;
+}
+.flag-green  { flex: 1; background: #009246; }
+.flag-white  { flex: 1; background: #ffffff; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; }
+.flag-red    { flex: 1; background: #ce2b37; }
+
+.app-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #009246;
+  margin-top: 20px;
+  letter-spacing: 0.5px;
+}
+
+.app-subtitle {
+  color: #666;
+  font-size: 0.95rem;
+  margin-top: 4px;
+  margin-bottom: 16px;
+}
+
+/* Tab Navigation */
+.tab-nav {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 16px;
+  border-top: 1px solid #eee;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 12px 20px;
+  font-size: 0.95rem;
+  color: #666;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+  font-weight: 500;
+}
+
+.tab-btn:hover {
+  color: #009246;
+}
+
+.tab-btn.active {
+  color: #009246;
+  border-bottom-color: #009246;
+}
+
+/* Main content */
+.app-main {
+  flex: 1;
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+@media (max-width: 600px) {
+  .app-title { font-size: 1.5rem; }
+  .tab-btn { padding: 10px 12px; font-size: 0.85rem; }
+  .tab-nav { gap: 0; }
+}

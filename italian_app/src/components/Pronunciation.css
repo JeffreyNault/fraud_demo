@@ -1,0 +1,228 @@
+.pronunciation {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.pron-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #009246;
+}
+
+.pron-intro {
+  font-size: 0.95rem;
+  color: #444;
+  line-height: 1.6;
+}
+
+.pron-note {
+  font-size: 0.88rem;
+  color: #666;
+  font-style: italic;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
+.pron-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pron-section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c2c2c;
+  border-left: 4px solid #009246;
+  padding-left: 10px;
+}
+
+/* Vowels */
+.vowel-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+.vowel-card {
+  background: #fff;
+  border: 2px solid #e8e8e8;
+  border-radius: 12px;
+  padding: 14px 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vowel-letter {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #009246;
+}
+
+.vowel-sound {
+  font-size: 1rem;
+  color: #ce2b37;
+  font-weight: 600;
+}
+
+.vowel-example {
+  font-size: 0.78rem;
+  color: #555;
+}
+
+.vowel-note {
+  font-size: 0.72rem;
+  color: #888;
+  line-height: 1.3;
+}
+
+/* Consonants */
+.legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+
+.badge-new  { background: #fde8e8; color: #ce2b37; }
+.badge-same { background: #e8f5ee; color: #009246; }
+
+.cons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cons-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 14px;
+  align-items: start;
+  background: #fff;
+  border-radius: 10px;
+  padding: 12px 16px;
+  border-left: 4px solid #ddd;
+}
+
+.cons-row.new  { border-left-color: #ce2b37; }
+.cons-row.same { border-left-color: #009246; }
+
+.cons-combo {
+  font-family: monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #2c2c2c;
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 6px;
+  text-align: center;
+  align-self: center;
+}
+
+.cons-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cons-sound {
+  font-size: 0.9rem;
+  color: #2c2c2c;
+}
+
+.cons-examples {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cons-example {
+  font-size: 0.83rem;
+  color: #555;
+}
+
+.cons-spanish {
+  font-size: 0.8rem;
+  color: #888;
+  font-style: italic;
+}
+
+/* Double consonants */
+.double-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.double-card {
+  background: #fff;
+  border: 2px solid #e8e8e8;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.double-pair {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.double-word {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.double-word.single { color: #009246; }
+.double-word.double { color: #ce2b37; }
+
+.double-meaning {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.double-vs {
+  font-size: 0.85rem;
+  color: #aaa;
+  font-style: italic;
+}
+
+/* Stress */
+.stress-examples {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.stress-item {
+  background: #fff;
+  border: 2px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  color: #2c2c2c;
+}
+
+.stress-item strong {
+  color: #ce2b37;
+}
+
+@media (max-width: 500px) {
+  .vowel-grid { grid-template-columns: repeat(3, 1fr); }
+  .cons-row { grid-template-columns: 1fr; }
+  .double-grid { grid-template-columns: 1fr; }
+  .stress-examples { grid-template-columns: 1fr; }
+}
