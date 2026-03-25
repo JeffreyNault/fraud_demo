@@ -1,0 +1,138 @@
+# Databricks Asset Bundle — War Room Daily Workflow
+# Deploy with: databricks bundle deploy
+# Run with:    databricks bundle run war_room_daily
+
+bundle:
+  name: retail_war_room
+
+workspace:
+  host: ${var.databricks_host}
+
+variables:
+  databricks_host:
+    description: "Databricks workspace URL"
+  cluster_id:
+    description: "Existing cluster ID for agent tasks"
+  compute_size:
+    description: "Job cluster node type"
+    default: "Standard_DS3_v2"
+  schedule_cron:
+    description: "Cron schedule for daily run"
+    default: "0 30 6 * * ?"    # 6:30 AM daily
+
+resources:
+  jobs:
+    war_room_daily:
+      name: "Retail War Room — Daily Triage"
+      description: >
+        Runs all 8 domain agents in parallel, then synthesizes results into
+        the executive briefing via the War Room Commander.
+      schedule:
+        quartz_cron_expression: ${var.schedule_cron}
+        timezone_id: "America/Detroit"
+        pause_status: UNPAUSED
+      email_notifications:
+        on_failure:
+          - ${var.ops_email}
+
+      # ── Shared job cluster ──────────────────────────────────────────────
+      job_clusters:
+        - job_cluster_key: war_room_cluster
+          new_cluster:
+            spark_version: "15.4.x-scala2.12"
+            node_type_id: ${var.compute_size}
+            num_workers: 2
+            spark_conf:
+              spark.sql.adaptive.enabled: "true"
+              spark.databricks.delta.preview.enabled: "true"
+            azure_attributes:
+              availability: SPOT_WITH_FALLBACK_AZURE
+              spot_bid_max_price: -1
+
+      # ── Tasks ───────────────────────────────────────────────────────────
+      tasks:
+
+        # ── Agent 1 — Store Operations ──────────────────────────────────
+        - task_key: agent_01_store_ops
+          notebook_task:
+            notebook_path: ./agents/agent_01_store_ops
+            source: WORKSPACE
+          job_cluster_key: war_room_cluster
+          timeout_seconds: 600
+          retry_on_timeout: false
+
+        # ── Agent 2 — Customer ──────────────────────────────────────────
+        - task_key: agent_02_customer
+          notebook_task:
+            notebook_path: ./agents/agent_02_customer
+            source: WORKSPACE
+          job_cluster_key: war_room_cluster
+          timeout_seconds: 600
+
+        # ── Agent 3 — Competitors ───────────────────────────────────────
+        - task_key: agent_03_competitors
+          notebook_task:
+            notebook_path: ./agents/agent_03_competitors
+            source: WORKSPACE
+          job_cluster_key: war_room_cluster
+          timeout_seconds: 900     # JDBC connection to Teradata may be slower
+
+        # ── Agent 4 — Merch & Inventory ─────────────────────────────────
+        - task_key: agent_04_merch_inventory
+          notebook_task:
+            notebook_path: ./agents/agent_04_merch_inventory
+            source: WORKSPACE
+          job_cluster_key: war_room_cluster
+          timeout_seconds: 600
+
+        # ── Agent 5 — Weather & External ────────────────────────────────
+        - task_key: agent_05_weather_external
+          notebook_task:
+            notebook_path: ./agents/agent_05_weather_external
+            source: WORKSPACE
+          job_cluster_key: war_room_cluster
+          timeout_seconds: 300     # Claude web search call
+
+        # ── Agent 6 — Digital & E-Commerce ──────────────────────────────
+        - task_key: agent_06_digital_ecommerce
+          notebook_task:
+            notebook_path: ./agents/agent_06_digital_ecommerce
+            source: WORKSPACE
+          job_cluster_key: war_room_cluster
+          timeout_seconds: 600
+
+        # ── Agent 7 — Finance ────────────────────────────────────────────
+        - task_key: agent_07_finance
+          notebook_task:
+            notebook_path: ./agents/agent_07_finance
+            source: WORKSPACE
+          job_cluster_key: war_room_cluster
+          timeout_seconds: 600
+
+        # ── Agent 8 — Supply Chain ───────────────────────────────────────
+        - task_key: agent_08_supply_chain
+          notebook_task:
+            notebook_path: ./agents/agent_08_supply_chain
+            source: WORKSPACE
+          job_cluster_key: war_room_cluster
+          timeout_seconds: 600
+
+        # ── War Room Commander (runs after ALL agents complete) ──────────
+        - task_key: war_room_commander
+          depends_on:
+            - task_key: agent_01_store_ops
+            - task_key: agent_02_customer
+            - task_key: agent_03_competitors
+            - task_key: agent_04_merch_inventory
+            - task_key: agent_05_weather_external
+            - task_key: agent_06_digital_ecommerce
+            - task_key: agent_07_finance
+            - task_key: agent_08_supply_chain
+          notebook_task:
+            notebook_path: ./commander/war_room_commander
+            source: WORKSPACE
+          job_cluster_key: war_room_cluster
+          timeout_seconds: 300
+          # Commander runs even if individual agents fail
+          # (agent outputs default to DATA UNAVAILABLE)
+          run_if: ALL_DONE
