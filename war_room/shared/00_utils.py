@@ -209,13 +209,17 @@ def send_email(smtp_config: dict, recipients: list[str], subject: str, body: str
 
 
 # ─────────────────────────────────────────────
-# ANTHROPIC CLIENT FACTORY
+# AZURE OPENAI CLIENT FACTORY
 # ─────────────────────────────────────────────
 
-def get_anthropic_client(api_key: str):
-    """Return an Anthropic client instance."""
-    import anthropic
-    return anthropic.Anthropic(api_key=api_key)
+def get_openai_client(endpoint: str, api_key: str, api_version: str):
+    """Return an AzureOpenAI client instance."""
+    from openai import AzureOpenAI
+    return AzureOpenAI(
+        azure_endpoint=endpoint,
+        api_key=api_key,
+        api_version=api_version,
+    )
 
 
 print("War Room Utils loaded.")

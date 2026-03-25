@@ -102,12 +102,24 @@ THRESHOLDS = {
 }
 
 # ─────────────────────────────────────────────
-# CLAUDE API CONFIG
+# AZURE OPENAI CONFIG
 # ─────────────────────────────────────────────
-CLAUDE_MODEL          = "claude-sonnet-4-6"
-ANTHROPIC_API_KEY     = dbutils.secrets.get(scope="war-room", key="anthropic-api-key")
+AZURE_OPENAI_ENDPOINT    = dbutils.secrets.get(scope="war-room", key="azure-openai-endpoint")
+AZURE_OPENAI_API_KEY     = dbutils.secrets.get(scope="war-room", key="azure-openai-api-key")
+AZURE_OPENAI_API_VERSION = "2024-12-01-preview"
+
+# Deployment names — set to match your Azure OpenAI resource deployments
+COMMANDER_DEPLOYMENT  = "gpt-4o"          # Commander synthesis — use the most capable deployment
+AGENT5_DEPLOYMENT     = "gpt-4o-mini"     # Agent 5 weather summarization — lighter weight is fine
+
 COMMANDER_MAX_TOKENS  = 4096
 AGENT5_MAX_TOKENS     = 2048
+
+# ─────────────────────────────────────────────
+# BING SEARCH CONFIG  (Agent 5 — weather & gas prices)
+# ─────────────────────────────────────────────
+BING_SEARCH_ENDPOINT  = "https://api.bing.microsoft.com/v7.0/search"
+BING_SEARCH_API_KEY   = dbutils.secrets.get(scope="war-room", key="bing-search-api-key")
 
 # ─────────────────────────────────────────────
 # NOTIFICATION CONFIG

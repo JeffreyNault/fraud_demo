@@ -5,7 +5,7 @@
 # MAGIC ## Agent 5 — Weather & External Events
 # MAGIC **Domain:** Severe Weather, Precipitation, Gas Prices
 # MAGIC
-# MAGIC - Data source: Claude web search at runtime (no lakehouse dependency)
+# MAGIC - Data source: Bing Search API (live) + Azure OpenAI for summarization
 # MAGIC - Market list: Pulled from dimStore at runtime
 # MAGIC - Silence rule: If no active weather events, output one line and stop
 # MAGIC - Gas price: Flag moves >5% WoW vs 30-day trend
@@ -21,7 +21,8 @@
 # COMMAND ----------
 
 import json
-import anthropic
+import re
+import requests as _requests
 
 report = FlagReport(5, "Weather & External Events", BUSINESS_DATE_STR)
 
@@ -51,77 +52,117 @@ market_text = "\n".join(f"- {m}" for m in market_list)
 print(f"Querying weather for {len(markets)} markets.")
 
 # ─────────────────────────────────────────────
-# 2. CLAUDE WEB SEARCH — WEATHER & GAS PRICES
+# 2. BING SEARCH — FETCH LIVE WEATHER & GAS DATA
 # ─────────────────────────────────────────────
 
-client = get_anthropic_client(ANTHROPIC_API_KEY)
+def bing_search(query: str, count: int = 5) -> str:
+    """Run a Bing Web Search query and return concatenated snippet text."""
+    headers = {"Ocp-Apim-Subscription-Key": BING_SEARCH_API_KEY}
+    params  = {"q": query, "count": count, "mkt": "en-US", "safeSearch": "Off"}
+    resp = _requests.get(BING_SEARCH_ENDPOINT, headers=headers, params=params, timeout=10)
+    resp.raise_for_status()
+    results = resp.json().get("webPages", {}).get("value", [])
+    return "\n".join(
+        f"[{r.get('name', '')}] {r.get('snippet', '')}"
+        for r in results
+    )
+
+search_results = {}
+search_errors  = []
+
+try:
+    # Severe weather across all markets — one broad query
+    market_states = list({r["state_cd"] for r in markets})
+    states_str    = " OR ".join(market_states[:10])   # cap query length
+    search_results["weather"] = bing_search(
+        f"severe weather warning advisory {states_str} {BUSINESS_DATE_STR}", count=8
+    )
+except Exception as e:
+    search_errors.append(f"Weather search failed: {e}")
+    search_results["weather"] = ""
+
+try:
+    search_results["gas"] = bing_search(
+        f"national average gas price today {BUSINESS_DATE_STR} AAA GasBuddy weekly change", count=4
+    )
+except Exception as e:
+    search_errors.append(f"Gas price search failed: {e}")
+    search_results["gas"] = ""
+
+# ─────────────────────────────────────────────
+# 3. AZURE OPENAI — PARSE SEARCH RESULTS INTO STRUCTURED DATA
+# ─────────────────────────────────────────────
+
+client = get_openai_client(AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_API_VERSION)
 
 weather_prompt = f"""You are an analyst for a major regional US retailer. Today is {BUSINESS_DATE_STR}.
 
-Your job is to identify any ACTIVE weather events or gas price changes that would materially impact
-customer traffic at retail stores in the following markets:
+Using only the web search results below, identify any ACTIVE weather events or gas price changes
+that would materially impact customer traffic at retail stores in these markets:
 
 {market_text}
 
-Please search for:
-1. Severe weather events (storms, blizzards, floods, tornadoes, ice storms) active TODAY or in the next 48 hours
-   in any of the above markets. Report ONLY markets with material weather events.
-2. National average gas price today vs. 7 days ago and vs. 30-day average. Flag if WoW change exceeds 5%.
-3. Any major external events (holidays, local events) affecting multiple markets.
+WEB SEARCH RESULTS — WEATHER:
+{search_results['weather']}
 
-SILENCE RULE: If there are no material weather events in any listed market, say exactly:
-"No active weather events in monitored markets. Gas price context below if material."
+WEB SEARCH RESULTS — GAS PRICES:
+{search_results['gas']}
 
-Output format (JSON):
+INSTRUCTIONS:
+1. Report ONLY markets from the list above that have material weather events TODAY or in the next 48 hours.
+2. Extract national average gas price today vs. 7 days ago if present. Flag if WoW change exceeds 5%.
+3. If no material weather events appear for any listed market, set no_events to true.
+
+Respond with ONLY valid JSON in this exact format:
 {{
   "weather_events": [
     {{
       "market": "market name",
-      "state": "state",
+      "state": "state abbreviation",
       "event_type": "blizzard|storm|flood|ice|tornado|other",
       "severity": "severe|moderate|minor",
       "impact": "brief description of expected traffic impact",
-      "duration": "when it starts/ends",
-      "traffic_impact_pct_estimate": optional number like -15 for -15%
+      "duration": "when it starts/ends or empty string",
+      "traffic_impact_pct_estimate": null
     }}
   ],
   "gas_price": {{
-    "national_avg_today": 3.45,
-    "national_avg_7d_ago": 3.30,
-    "wow_change_pct": 4.5,
-    "regional_notes": "any notable regional variance",
-    "flag": true/false
+    "national_avg_today": 0.0,
+    "national_avg_7d_ago": 0.0,
+    "wow_change_pct": 0.0,
+    "regional_notes": "",
+    "flag": false
   }},
-  "other_external": "any other notable external factor, or null",
-  "no_events": true/false
+  "other_external": null,
+  "no_events": true
 }}
 """
 
 try:
-    response = client.messages.create(
-        model=CLAUDE_MODEL,
+    response = client.chat.completions.create(
+        model=AGENT5_DEPLOYMENT,
         max_tokens=AGENT5_MAX_TOKENS,
-        tools=[{"type": "web_search_20250305", "name": "web_search"}],
-        messages=[{"role": "user", "content": weather_prompt}],
+        temperature=0,
+        response_format={"type": "json_object"},
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a retail operations analyst. Respond only with valid JSON.",
+            },
+            {"role": "user", "content": weather_prompt},
+        ],
     )
-
-    # Extract text from response
-    weather_text = ""
-    for block in response.content:
-        if hasattr(block, "text"):
-            weather_text += block.text
-
-    # Parse JSON from response
-    import re
-    json_match = re.search(r'\{[\s\S]*\}', weather_text)
-    if json_match:
-        weather_data = json.loads(json_match.group())
-    else:
-        weather_data = {"no_events": True, "weather_events": [], "gas_price": {}}
+    weather_data = json.loads(response.choices[0].message.content)
 
 except Exception as e:
-    report.add_data_quality_note(f"Claude web search failed: {e}. Weather context unavailable.")
+    for err in search_errors:
+        report.add_data_quality_note(err)
+    report.add_data_quality_note(f"OpenAI weather parsing failed: {e}. Weather context unavailable.")
     weather_data = {"no_events": True, "weather_events": [], "gas_price": {}}
+
+if search_errors:
+    for err in search_errors:
+        report.add_data_quality_note(err)
 
 # ─────────────────────────────────────────────
 # 3. BUILD FLAG REPORT

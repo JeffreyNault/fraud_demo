@@ -5,7 +5,7 @@
 # MAGIC ## War Room Commander — Synthesis Engine
 # MAGIC
 # MAGIC Runs after all 8 agents complete. Collects structured flag reports via task values,
-# MAGIC calls Claude (claude-sonnet-4-6) to synthesize the executive briefing, stores the
+# MAGIC calls Azure OpenAI (gpt-4o) to synthesize the executive briefing, stores the
 # MAGIC result in Delta, and delivers to Teams + email.
 # MAGIC
 # MAGIC **Input:** Agent task values (output strings + metadata)
@@ -21,9 +21,9 @@
 
 # COMMAND ----------
 
-import anthropic
 import json
 from datetime import date, timedelta
+from openai import AzureOpenAI, APIError as OpenAIAPIError
 
 # ─────────────────────────────────────────────
 # 1. COLLECT AGENT OUTPUTS FROM TASK VALUES
@@ -314,24 +314,25 @@ print("Commander prompt assembled.")
 print(f"Prompt length: {len(commander_user_prompt):,} characters")
 
 # ─────────────────────────────────────────────
-# 5. CALL CLAUDE — SYNTHESIZE BRIEFING
+# 5. CALL AZURE OPENAI — SYNTHESIZE BRIEFING
 # ─────────────────────────────────────────────
 
-client = get_anthropic_client(ANTHROPIC_API_KEY)
+client = get_openai_client(AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_API_VERSION)
 
 try:
-    response = client.messages.create(
-        model=CLAUDE_MODEL,
+    response = client.chat.completions.create(
+        model=COMMANDER_DEPLOYMENT,
         max_tokens=COMMANDER_MAX_TOKENS,
-        system=COMMANDER_SYSTEM_PROMPT,
+        temperature=0,
         messages=[
-            {"role": "user", "content": commander_user_prompt}
+            {"role": "system", "content": COMMANDER_SYSTEM_PROMPT},
+            {"role": "user",   "content": commander_user_prompt},
         ],
     )
-    briefing = response.content[0].text
+    briefing = response.choices[0].message.content
     print("Commander briefing generated successfully.")
 
-except anthropic.APIError as e:
+except OpenAIAPIError as e:
     briefing = (
         f"DAILY WAR ROOM BRIEFING\n"
         f"{BUSINESS_DATE_STR}    BUSINESS CONDITION: DATA UNAVAILABLE\n\n"
